@@ -91,7 +91,7 @@ type
     property OnAfterNotify : TSubAfterNotifyEvent read GetAfterEvent
       write SetAfterEvent;
     //methods
-    function Notify(Const AMessage:T;Const APublisher:IPublisher<T>;
+    function Notify(Const AMessage:T;Const APublisher:IPublisher;
       Out Error:String):Boolean;
   end;
 
@@ -118,6 +118,10 @@ type
     base class implementing the ISubscriber interface
   *)
   TSubscriberImpl<T> = class(TInterfacedObject,ISubscriber<T>)
+  protected
+    type
+      ITypedSubscriber = ISubscriber<T>;
+      //ITypedPublisher = IPublisher<T>;  I
   strict private
     FErrorEvent : TSubNotifyErrorEvent<T>;
     FBeforeEvent : TSubBeforeNotifyEvent<T>;
@@ -129,11 +133,11 @@ type
     procedure SetBeforeEvent(AValue: TSubBeforeNotifyEvent);
     procedure SetErrorEvent(AValue: TSubNotifyErrorEvent);
   strict protected
-    procedure DoOnError(Const ASender:ISubscriber<T>;
+    procedure DoOnError(Const ASender:ITypedSubscriber;
       Const AMessage:T;Const AError:String);
-    procedure DoOnBeforeNotify(Const ASender:ISubscriber<T>;
+    procedure DoOnBeforeNotify(Const ASender:ITypedSubscriber;
       Const AMessage:T;Out AbortNotify:Boolean);
-    procedure DoOnAfterNotify(Const ASender:ISubscriber<T>;Const AMessage:T);
+    procedure DoOnAfterNotify(Const ASender:ITypedSubscriber;Const AMessage:T);
 
     //children classes need to override this to perform notify logic
     function DoNotify(Const AMessage:T;Const APublisher:IPublisher<T>;
@@ -145,7 +149,7 @@ type
       write SetBeforeEvent;
     property OnAfterNotify : TSubAfterNotifyEvent read GetAfterEvent
       write SetAfterEvent;
-    function Notify(Const AMessage:T;Const APublisher:IPublisher<T>;
+    function Notify(Const AMessage:T;Const APublisher:ITypedPublisher;
       Out Error:String):Boolean;
   end;
 
