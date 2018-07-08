@@ -40,77 +40,90 @@ type
     TInterfaceList
     {$ENDIF};
 
-  //forward
-  IPublisher<T> = interface;
-  ISubscriber<T> = interface;
+
+  { ISubscriberBase }
+  (*
+    intermediary subscriber to bypass no forward declaration of generics
+  *)
+  ISubscriberBase<T> = interface
+    ['{295F4B43-35DB-4A36-9651-61984D61A7FE}']
+    //methods
+    function Notify(Const AMessage:T;Const ASender:IInterface;
+      Out Error:String):Boolean;
+  end;
 
   (*
     event triggered by a subscriber if calling Notify results in failure
   *)
-  TSubNotifyErrorEvent<T> = procedure(Const ASender:ISubscriber;
+  TSubNotifyErrorEvent<T> = procedure(Const ASender:ISubscriberBase;
     Const AMessage:T;Const AError:String) of object;
 
   (*
     event occurring directly before Notify logic is called. If AbortNotfiy
     is set to True, then Notify logic will not run and report success
   *)
-  TSubBeforeNotifyEvent<T> = procedure(Const ASender:ISubscriber;
+  TSubBeforeNotifyEvent<T> = procedure(Const ASender:ISubscriberBase;
     Const AMessage:T;Out AbortNotify:Boolean) of object;
 
   (*
     event occurring after notify success
   *)
-  TSubAfterNotifyEvent<T> = procedure(Const ASender:ISubscriber;
+  TSubAfterNotifyEvent<T> = procedure(Const ASender:ISubscriberBase;
     Const AMessage:T) of object;
-
-  (*
-    event triggered by a publisher if calling Notify of a subscriber results
-    in failure
-  *)
-  TPubNotifyErrorEvent<T> = procedure(Const ASender:IPublisher;
-    Const ASubscriber:ISubscriber;Const AMessage:T;Const AError:String) of object;
 
   { ISubscriber }
   (*
     subscriber to a publisher
   *)
-  ISubscriber<T> = interface
-    ['{295F4B43-35DB-4A36-9651-61984D61A7FE}']
+  ISubscriber<T> = interface(ISubscriberBase<T>)
+    ['{5680F6E0-F6A4-42D3-A259-DDC7E4C9B2EE}']
     //property methods
-    function GetErrorEvent: TSubNotifyErrorEvent;
-    procedure SetErrorEvent(AValue: TSubNotifyErrorEvent);
-    procedure SetAfterEvent(AValue: TSubAfterNotifyEvent);
-    procedure SetBeforeEvent(AValue: TSubBeforeNotifyEvent);
-    function GetAfterEvent: TSubAfterNotifyEvent;
-    function GetBeforeEvent: TSubBeforeNotifyEvent;
+    function GetErrorEvent: TSubNotifyErrorEvent<T>;
+    procedure SetErrorEvent(Const AValue: TSubNotifyErrorEvent<T>);
+    procedure SetAfterEvent(Const AValue: TSubAfterNotifyEvent<T>);
+    procedure SetBeforeEvent(Const AValue: TSubBeforeNotifyEvent<T>);
+    function GetAfterEvent: TSubAfterNotifyEvent<T>;
+    function GetBeforeEvent: TSubBeforeNotifyEvent<T>;
     //properties
-    property OnError : TSubNotifyErrorEvent read GetErrorEvent
+    property OnError : TSubNotifyErrorEvent<T> read GetErrorEvent
       write SetErrorEvent;
-    property OnBeforeNotify : TSubBeforeNotifyEvent read GetBeforeEvent
+    property OnBeforeNotify : TSubBeforeNotifyEvent<T> read GetBeforeEvent
       write SetBeforeEvent;
-    property OnAfterNotify : TSubAfterNotifyEvent read GetAfterEvent
+    property OnAfterNotify : TSubAfterNotifyEvent<T> read GetAfterEvent
       write SetAfterEvent;
-    //methods
-    function Notify(Const AMessage:T;Const APublisher:IPublisher;
-      Out Error:String):Boolean;
   end;
+
+  { IPublisherBase }
+  (*
+    intermediary publisher to bypass no forward declaration of generics
+  *)
+  IPublisherBase<T> = interface
+    ['{E2F65A97-6293-4FAD-B264-BDA6C98F1D4B}']
+    //methods
+    procedure Subscribe(Const ASubscriber:ISubscriber<T>);
+    procedure Unsubscribe(Const ASubscriber:ISubscriber<T>);
+    procedure Notify(Const AMessage:T);
+  end;
+
+  (*
+    event triggered by a publisher if calling Notify of a subscriber results
+    in failure
+  *)
+  TPubNotifyErrorEvent<T> = procedure(Const ASender:IPublisherBase;
+    Const ASubscriber:ISubscriber;Const AMessage:T;Const AError:String) of object;
 
   { IPublisher }
   (*
     publisher of some type of message
   *)
-  IPublisher<T> = interface
-    ['{E2F65A97-6293-4FAD-B264-BDA6C98F1D4B}']
+  IPublisher<T> = interface(IPublisherBase<T>)
+    ['{07CA49CC-4052-40FB-A8D8-547B57EDCB6C}']
     //property methods
-    function GetErrorEvent: TPubNotifyErrorEvent;
-    procedure SetErrorEvent(AValue: TPubNotifyErrorEvent);
+    function GetErrorEvent: TPubNotifyErrorEvent<T>;
+    procedure SetErrorEvent(Const AValue: TPubNotifyErrorEvent<T>);
     //properties
-    property OnError : TPubNotifyErrorEvent read GetErrorEvent
+    property OnError : TPubNotifyErrorEvent<T> read GetErrorEvent
       write SetErrorEvent;
-    //methods
-    procedure Subscribe(Const ASubscriber:ISubscriber);
-    procedure Unsubscribe(Const ASubscriber:ISubscriber);
-    procedure Notify(Const AMessage:T);
   end;
 
   { TSubscriberImpl }
@@ -118,38 +131,34 @@ type
     base class implementing the ISubscriber interface
   *)
   TSubscriberImpl<T> = class(TInterfacedObject,ISubscriber<T>)
-  protected
-    type
-      ITypedSubscriber = ISubscriber<T>;
-      //ITypedPublisher = IPublisher<T>;  I
   strict private
     FErrorEvent : TSubNotifyErrorEvent<T>;
     FBeforeEvent : TSubBeforeNotifyEvent<T>;
     FAfterEvent : TSubAfterNotifyEvent<T>;
-    function GetAfterEvent: TSubAfterNotifyEvent;
-    function GetBeforeEvent: TSubBeforeNotifyEvent;
-    function GetErrorEvent: TSubNotifyErrorEvent;
-    procedure SetAfterEvent(AValue: TSubAfterNotifyEvent);
-    procedure SetBeforeEvent(AValue: TSubBeforeNotifyEvent);
-    procedure SetErrorEvent(AValue: TSubNotifyErrorEvent);
+    function GetAfterEvent: TSubAfterNotifyEvent<T>;
+    function GetBeforeEvent: TSubBeforeNotifyEvent<T>;
+    function GetErrorEvent: TSubNotifyErrorEvent<T>;
+    procedure SetAfterEvent(Const AValue: TSubAfterNotifyEvent<T>);
+    procedure SetBeforeEvent(Const AValue: TSubBeforeNotifyEvent<T>);
+    procedure SetErrorEvent(Const AValue: TSubNotifyErrorEvent<T>);
   strict protected
-    procedure DoOnError(Const ASender:ITypedSubscriber;
+    procedure DoOnError(Const ASender:ISubscriberBase<T>;
       Const AMessage:T;Const AError:String);
-    procedure DoOnBeforeNotify(Const ASender:ITypedSubscriber;
+    procedure DoOnBeforeNotify(Const ASender:ISubscriberBase<T>;
       Const AMessage:T;Out AbortNotify:Boolean);
-    procedure DoOnAfterNotify(Const ASender:ITypedSubscriber;Const AMessage:T);
+    procedure DoOnAfterNotify(Const ASender:ISubscriberBase<T>;Const AMessage:T);
 
     //children classes need to override this to perform notify logic
     function DoNotify(Const AMessage:T;Const APublisher:IPublisher<T>;
       Out Error:String):Boolean;virtual;abstract;
   public
-    property OnError : TSubNotifyErrorEvent read GetErrorEvent
+    property OnError : TSubNotifyErrorEvent<T> read GetErrorEvent
       write SetErrorEvent;
-    property OnBeforeNotify : TSubBeforeNotifyEvent read GetBeforeEvent
+    property OnBeforeNotify : TSubBeforeNotifyEvent<T> read GetBeforeEvent
       write SetBeforeEvent;
-    property OnAfterNotify : TSubAfterNotifyEvent read GetAfterEvent
+    property OnAfterNotify : TSubAfterNotifyEvent<T> read GetAfterEvent
       write SetAfterEvent;
-    function Notify(Const AMessage:T;Const APublisher:ITypedPublisher;
+    function Notify(Const AMessage:T;Const ASender:IInterface;
       Out Error:String):Boolean;
   end;
 
@@ -162,15 +171,15 @@ type
     FErrorEvent : TPubNotifyErrorEvent<T>;
     FList : TIntfList;
     function GetErrorEvent: TPubNotifyErrorEvent;
-    procedure SetErrorEvent(AValue: TPubNotifyErrorEvent);
+    procedure SetErrorEvent(Const AValue: TPubNotifyErrorEvent<T>);
   strict protected
     procedure DoOnError(Const ASender:IPublisher<T>;
       Const ASubscriber:ISubscriber<T>;Const AMessage:T;Const AError:String);
   public
-    property OnError : TPubNotifyErrorEvent read GetErrorEvent
+    property OnError : TPubNotifyErrorEvent<T> read GetErrorEvent
       write SetErrorEvent;
-    procedure Subscribe(Const ASubscriber:ISubscriber);
-    procedure Unsubscribe(Const ASubscriber:ISubscriber);
+    procedure Subscribe(Const ASubscriber:ISubscriber<T>);
+    procedure Unsubscribe(Const ASubscriber:ISubscriber<T>);
     procedure Notify(Const AMessage:T);
     constructor Create;virtual;
     destructor Destroy; override;
@@ -182,42 +191,42 @@ implementation
 
 function TSubscriberImpl<T>.GetAfterEvent: TSubAfterNotifyEvent<T>;
 begin
-  Result:=@FAfterEvent;
+  Result:=FAfterEvent;
 end;
 
 function TSubscriberImpl<T>.GetBeforeEvent: TSubBeforeNotifyEvent<T>;
 begin
-  Result:=@FBeforeEvent;
+  Result:=FBeforeEvent;
 end;
 
 function TSubscriberImpl<T>.GetErrorEvent: TSubNotifyErrorEvent<T>;
 begin
-  Result:=@FErrorEvent;
+  Result:=FErrorEvent;
 end;
 
-procedure TSubscriberImpl<T>.SetAfterEvent(AValue: TSubAfterNotifyEvent);
+procedure TSubscriberImpl<T>.SetAfterEvent(Const AValue: TSubAfterNotifyEvent<T>);
 begin
   FAfterEvent:=AValue;
 end;
 
-procedure TSubscriberImpl<T>.SetBeforeEvent(AValue: TSubBeforeNotifyEvent);
+procedure TSubscriberImpl<T>.SetBeforeEvent(Const AValue: TSubBeforeNotifyEvent<T>);
 begin
   FBeforeEvent:=AValue;
 end;
 
-procedure TSubscriberImpl<T>.SetErrorEvent(AValue: TSubNotifyErrorEvent);
+procedure TSubscriberImpl<T>.SetErrorEvent(Const AValue: TSubNotifyErrorEvent<T>);
 begin
   FErrorEvent:=AValue;
 end;
 
-procedure TSubscriberImpl<T>.DoOnError(const ASender: ISubscriber<T>;
+procedure TSubscriberImpl<T>.DoOnError(const ASender: ISubscriberBase<T>;
   const AMessage: T; const AError: String);
 begin
   if Assigned(FErrorEvent) then
     FErrorEvent(ASender,AMessage,AError);
 end;
 
-procedure TSubscriberImpl<T>.DoOnBeforeNotify(const ASender: ISubscriber<T>;
+procedure TSubscriberImpl<T>.DoOnBeforeNotify(const ASender: ISubscriberBase<T>;
   const AMessage: T; out AbortNotify: Boolean);
 begin
   AbortNotify:=False;
@@ -225,7 +234,7 @@ begin
     FBeforeEvent(ASender,AMessage,AbortNotify);
 end;
 
-procedure TSubscriberImpl<T>.DoOnAfterNotify(const ASender: ISubscriber<T>;
+procedure TSubscriberImpl<T>.DoOnAfterNotify(const ASender: ISubscriberBase<T>;
   const AMessage: T);
 begin
   if Assigned(FAfterEvent) then
@@ -233,7 +242,7 @@ begin
 end;
 
 function TSubscriberImpl<T>.Notify(const AMessage: T;
-  const APublisher: IPublisher<T>; out Error: String): Boolean;
+  const ASender: IInterface; out Error: String): Boolean;
 var
   LSubscriber:ISubscriber<T>;
   LAbort:Boolean;
@@ -251,7 +260,7 @@ begin
       DoOnAfterNotify(LSubscriber,AMessage);
       Exit;
     end;
-    if not DoNotify(AMessage,APublisher,Error) then
+    if not DoNotify(AMessage,ASender as IPublisher<T>,Error) then
       Exit;
     Result:=True;
     DoOnAfterNotify(LSubscriber,AMessage);
@@ -267,12 +276,12 @@ begin
   Result:=@FErrorEvent;
 end;
 
-procedure TPublisherImpl<T>.SetErrorEvent(AValue: TPubNotifyErrorEvent);
+procedure TPublisherImpl<T>.SetErrorEvent(Const AValue: TPubNotifyErrorEvent<T>);
 begin
   FErrorEvent:=AValue;
 end;
 
-procedure TPublisherImpl<T>.Subscribe(const ASubscriber: ISubscriber);
+procedure TPublisherImpl<T>.Subscribe(const ASubscriber: ISubscriber<T>);
 var
   I:Integer;
 begin
@@ -281,7 +290,7 @@ begin
     Flist.Add(ASubscriber);
 end;
 
-procedure TPublisherImpl<T>.Unsubscribe(const ASubscriber: ISubscriber);
+procedure TPublisherImpl<T>.Unsubscribe(const ASubscriber: ISubscriber<T>);
 var
   I:Integer;
 begin
@@ -313,8 +322,8 @@ begin
   end;
 end;
 
-procedure TPublisherImpl<T>.DoOnError(Const ASender:IPublisher;
-  Const ASubscriber:ISubscriber;Const AMessage:T;Const AError:String);
+procedure TPublisherImpl<T>.DoOnError(Const ASender:IPublisher<T>;
+  Const ASubscriber:ISubscriber<T>;Const AMessage:T;Const AError:String);
 begin
   if Assigned(FErrorEvent) then
     FErrorEvent(ASender,ASubscriber,AMessage,AError);
